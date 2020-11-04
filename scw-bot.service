@@ -1,0 +1,16 @@
+# scw-bot systemd service definition
+[Unit]
+Description=Discord bot that manages SCW resources
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+Environment="SCW_BOT_DISCORD_TOKEN=your-secret-token-goes-here"
+ExecStart=/root/scw-bot
+
+[Install]
+WantedBy=multi-user.target
