@@ -22,6 +22,9 @@ var comm = Commands{
 	"vpn-start":  VpnStartCallback,
 	"vpn-status": VpnStatusCallback,
 	"vpn-list":   VpnListCallback,
+	"mc-start":   McStartCallback,
+	"mc-status":  McStatusCallback,
+	"mc-list":    McListCallback,
 }
 var keywords string
 
@@ -79,6 +82,25 @@ func BingCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
 	s.MessageReactionAdd(m.ChannelID, m.Message.ID, "🚭")
 }
 
+func McStartCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
+	s.MessageReactionAdd(m.ChannelID, m.Message.ID, "🔄")
+	s.ChannelMessageSend(m.ChannelID, "🔄 working on it...")
+
+	go func() {
+		out, err := exec.Command("/bin/bash", "/root/scw-automation/bin/scw-mc-start.sh").CombinedOutput()
+		if err != nil {
+			s.MessageReactionRemove(m.ChannelID, m.Message.ID, "🔄", s.State.User.ID)
+			s.MessageReactionAdd(m.ChannelID, m.Message.ID, "❌")
+			s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("❌ Error starting MC (%s): %v", strings.TrimSpace(string(out)), err))
+			return
+		}
+		s.MessageReactionRemove(m.ChannelID, m.Message.ID, "🔄", s.State.User.ID)
+		s.MessageReactionAdd(m.ChannelID, m.Message.ID, "✅")
+		s.ChannelMessageSend(m.ChannelID, "✅ MC started")
+	}()
+
+}
+
 func VpnStartCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
 	s.MessageReactionAdd(m.ChannelID, m.Message.ID, "🔄")
 	s.ChannelMessageSend(m.ChannelID, "🔄 working on it...")
@@ -98,6 +120,15 @@ func VpnStartCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 }
 
+func McStatusCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
+	out, err := exec.Command("/bin/bash", "/root/scw-automation/bin/scw-mc-status.sh").CombinedOutput()
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("❌ %s", strings.TrimSpace(string(out))))
+		return
+	}
+	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("✅ %s", strings.TrimSpace(string(out))))
+}
+
 func VpnStatusCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
 	out, err := exec.Command("/bin/bash", "/root/scw-automation/bin/scw-vpn-status.sh").CombinedOutput()
 	if err != nil {
@@ -105,6 +136,15 @@ func VpnStatusCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("✅ %s", strings.TrimSpace(string(out))))
+}
+
+func McListCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
+	out, err := exec.Command("/bin/bash", "/root/scw-automation/bin/scw-mc-connection-list.sh").CombinedOutput()
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("❌ %s", strings.TrimSpace(string(out))))
+		return
+	}
+	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("✅ connected clients:\n%s", strings.TrimSpace(string(out))))
 }
 
 func VpnListCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
