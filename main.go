@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -25,8 +26,19 @@ var comm = Commands{
 	"mc-start":   McStartCallback,
 	"mc-status":  McStatusCallback,
 	"mc-list":    McListCallback,
+	"kigyo":      KigyoCallback,
 }
-var keywords string
+
+var kigyoTime time.Time
+
+func init() {
+	target, err := time.Parse("2006-01-02T15:04:05Z07:00", "2021-10-14T08:00:00+02:00")
+	// target, err := time.Parse("2006-01-02T15:04:05Z07:00", "2021-10-12T10:49:50+02:00")
+	if err != nil {
+		panic(err)
+	}
+	kigyoTime = target
+}
 
 func main() {
 
@@ -36,7 +48,6 @@ func main() {
 		kws[i] = k
 		i++
 	}
-	keywords = strings.Join(kws, ", ")
 
 	token := os.Getenv("SCW_BOT_DISCORD_TOKEN")
 	if token == "" {
@@ -156,6 +167,14 @@ func VpnListCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
 	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("✅ connected clients:\n%s", strings.TrimSpace(string(out))))
 }
 
+func KigyoCallback(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if time.Now().Before(kigyoTime) {
+		s.ChannelMessageSend(m.ChannelID, "Szép munka! Ha újra rámírsz reggel 8:00 után, megmondom hova tovább!")
+	} else {
+		s.ChannelMessageSend(m.ChannelID, "Bing-bong, reggel 8:00! Ha megkérsz, indítok neked egy MC szervert, amit aztán az mc.asdasd.hu-n elérsz. Mocsi csatlakozik hozzád, beszélj vele!")
+	}
+}
+
 // This function will be called (due to AddHandler above) every time a new
 // message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -189,6 +208,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
+	keywords := make([]string, 0, len(comm))
+	for k, _ := range comm {
+		if strings.HasPrefix(k, "mc-") && time.Now().Before(kigyoTime) {
+			continue
+		}
+		keywords = append(keywords, k)
+	}
+
 	// no matching command, reply with help
-	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf(`ℹ️ Nem értem amit mondasz, ezeket mondd: %s`, keywords))
+	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf(`ℹ️ Nem értem amit mondasz, ezeket mondd: %s`, strings.Join(keywords, ",")))
 }
